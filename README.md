@@ -6,6 +6,8 @@
 数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
 三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
 
+电表累计读数核算（导航「电表核算」，路由 `/meters`）：原始读数批次（MeterBatch，draft/published/superseded）→ 相邻区间（MeterSegment，complete/gap/isolated）→ 已发布日耗（MeterDaily，每表每日唯一、带起止读数依据）→ 合并为可归因 Dataset。跨日缺测不均摊、回零/换表缺交接即隔离；`MeterState` 行锁加 `lock_version` 乐观锁保证并发发布整组切换、中断恢复重试不重复产生日耗；请求令牌保证补录幂等。口径与不变量见 [BUSINESS.md](BUSINESS.md) 的「电表累计读数核算口径」。
+
 ## 快速启动
 ```bash
 cp .env.example .env

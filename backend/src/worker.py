@@ -8,6 +8,7 @@ from src.models import Job, Dataset, Report
 from src.services.business import analyze
 from src.services.reports import deliver
 from src.services.audit import record
+from src.services import meters as meter_service
 logging.basicConfig(level=logging.INFO)
 def execute(job_id):
     with Session() as db:
@@ -40,6 +41,13 @@ def main():
     with Session() as db:
         for j in db.scalars(select(Job).where(Job.status=='running')):
             j.status='queued';record(db,'worker','job.recovered',{'id':j.id})
+        # 电表发布中断恢复：核对日耗守恒并幂等重建，重试不重复产生日耗。
+        try:
+            repaired = meter_service.recover_on_startup(db)
+            for meter_id in repaired:
+                record(db,'worker','meter.recovered',{'meter_id':meter_id})
+        except Exception:
+            logging.exception('Meter recovery skipped')
         db.commit()
     while True:
         Path('/tmp/heartbeat').touch()
